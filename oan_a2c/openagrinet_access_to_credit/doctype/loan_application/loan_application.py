@@ -103,7 +103,8 @@ def get_loan_applications(search=None, status=None, loan_amount_min=None, loan_a
             SELECT 
                 name, application_id, farmer, full_name, last_name, status, 
                 requested_amount, loan_duration_months, primary_crop, 
-                loan_type, submitted_at, creation
+                loan_type, submitted_at, creation,
+                modified AS last_updated
             FROM `tabLoan Application`
             {where_clause}
             ORDER BY creation DESC

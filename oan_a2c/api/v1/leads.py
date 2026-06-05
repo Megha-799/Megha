@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 
 
+
 @frappe.whitelist(allow_guest=False)
 def get_leads(
 	start=0,
@@ -104,47 +105,6 @@ def get_leads(
 	}
 
 
-@frappe.whitelist(allow_guest=False)
-def create_lead(phone_number=None, first_name=None, last_name=None, email=None, lead_source="Agent Entry", external_id=None):
-	"""
-	Natively creates a new A2C Lead document from the A2C application interface.
-	
-	Security Specs:
-	  - Enforces JWT session validation via whitelist allow_guest=False.
-	  - Validates role creation permissions natively.
-	  - Validates and sanitizes all input strings, including strict email formatting checks.
-	"""
-	frappe.has_permission("A2C Lead", "create", throw=True)
-
-	if not phone_number:
-		frappe.throw(_("phone_number is required"), frappe.MandatoryError)
-
-	# Validate lead_source Select field input
-	allowed_sources = ("Missed Call", "IVR", "SMS", "Agent Entry")
-	if lead_source not in allowed_sources:
-		lead_source = "Agent Entry"
-
-	# Validate email address if provided
-	if email:
-		from frappe.utils import validate_email_address
-		if not validate_email_address(email):
-			frappe.throw(_("Invalid email address format"), frappe.ValidationError)
-
-	lead = frappe.new_doc("A2C Lead")
-	lead.phone_number = phone_number
-	lead.first_name = first_name
-	lead.last_name = last_name
-	lead.email = email
-	lead.lead_source = lead_source
-	lead.external_id = external_id
-	lead.status = "Open"
-	lead.insert(ignore_permissions=False)
-
-	return {
-		"status": "success",
-		"lead_id": lead.name,
-		"message": _("Lead created successfully.")
-	}
 
 
 @frappe.whitelist(allow_guest=False)
@@ -176,3 +136,207 @@ def get_lead_summary():
 		"by_status": counts_by_status
 	}
 
+
+@frappe.whitelist(allow_guest=False)
+def search_farmer(**kwargs):
+	"""
+	Step 1 of the new A2C flow: Search for a farmer in OpenG2P by Fayda ID.
+
+	Returns a farmer profile preview so the UI can confirm the correct farmer
+	before proceeding to OTP. No Frappe document is created at this stage.
+
+	Required params: fayda_id
+	"""
+	data = {}
+	try:
+		if frappe.request:
+			data = frappe.request.get_json(silent=True) or {}
+	except Exception:
+		pass
+
+	form = getattr(frappe, "form_dict", {})
+
+	def _get(key, default=None):
+		return kwargs.get(key) or data.get(key) or form.get(key) or default
+
+	fayda_id = _get("fayda_id")
+	if not fayda_id:
+		frappe.throw(_("fayda_id is required"), frappe.MandatoryError)
+
+	try:
+		from oan_a2c.consent.openg2p_client import OpenG2PConsentClient
+		client = OpenG2PConsentClient()
+	except Exception as e:
+		frappe.throw(_("Could not connect to OpenG2P: {0}").format(str(e)))
+
+	# Look up farmer by Fayda ID
+	farmer_db_id = client.get_farmer_by_fayda_id(fayda_id)
+	if not farmer_db_id:
+		return {
+			"status": "not_found",
+			"found": False,
+			"fayda_id": fayda_id,
+			"message": "No farmer found with the given Fayda ID in OpenG2P."
+		}
+
+	# Fetch basic profile fields from res.partner
+	farmer_records = client._admin_search_read(
+		"res.partner",
+		[["id", "=", farmer_db_id]],
+		["id", "name", "email", "mobile", "phone"]
+	)
+
+	farmer_profile = {}
+	if farmer_records:
+		f = farmer_records[0]
+		full_name = (f.get("name") or "").strip()
+		parts = full_name.split()
+		farmer_profile = {
+			"farmer_db_id": farmer_db_id,
+			"fayda_id": fayda_id,
+			"full_name": full_name,
+			"given_name": parts[0].title() if parts else "",
+			"family_name": " ".join(p.title() for p in parts[1:]) if len(parts) > 1 else "",
+			"email": f.get("email") or "",
+			"mobile": f.get("mobile") or f.get("phone") or "",
+		}
+	else:
+		farmer_profile = {
+			"farmer_db_id": farmer_db_id,
+			"fayda_id": fayda_id,
+			"full_name": "",
+			"given_name": "",
+			"family_name": "",
+			"email": "",
+			"mobile": "",
+		}
+
+	return {
+		"status": "success",
+		"found": True,
+		"farmer": farmer_profile,
+		"message": "Farmer found. Proceed to request OTP."
+	}
+
+@frappe.whitelist(allow_guest=False)
+def schedule_visit(lead_id, visit_date, notes=None):
+	"""
+	2b. Schedule Visit API for Lead
+	"""
+	frappe.has_permission("A2C Lead", "write", throw=True)
+	if not lead_id or not visit_date:
+		frappe.throw(_("lead_id and visit_date are required"), frappe.MandatoryError)
+		
+	lead = frappe.get_doc("A2C Lead", lead_id)
+	lead.visit_date = visit_date
+	if notes:
+		lead.call_notes = (lead.call_notes or "") + f"\nVisit Notes: {notes}"
+	lead.save()
+	
+	return {"status": "success", "message": "Visit scheduled successfully"}
+
+@frappe.whitelist(allow_guest=False)
+def send_notification(lead_id, message):
+	"""
+	2f. Notification API for Lead
+	Sends an SMS or internal notification.
+	"""
+	frappe.has_permission("A2C Lead", "read", throw=True)
+	if not lead_id or not message:
+		frappe.throw(_("lead_id and message are required"), frappe.MandatoryError)
+		
+	# Placeholder for actual SMS/Email integration
+	frappe.msgprint(f"Notification Sent to Lead {lead_id}: {message}")
+	
+	return {"status": "success", "message": "Notification sent successfully"}
+
+@frappe.whitelist(allow_guest=False)
+def submit_lead(lead_id, **kwargs):
+	"""
+	2g. Submit Lead API
+	Saves all credit/farm information to the lead and marks it as Initiated.
+	"""
+	frappe.has_permission("A2C Lead", "write", throw=True)
+	if not lead_id:
+		frappe.throw(_("lead_id is required"), frappe.MandatoryError)
+		
+	data = frappe.request.get_json(silent=True) or kwargs
+	
+	lead = frappe.get_doc("A2C Lead", lead_id)
+	
+	# Update fields from JSON
+	updatable_fields = ["loan_type", "loan_amount", "purpose_message", "region", "zone", "woreda", "agent_id"]
+	for f in updatable_fields:
+		if f in data:
+			setattr(lead, f, data[f])
+			
+	lead.status = "Initiated"
+	lead.save()
+	
+	return {"status": "success", "message": "Lead submitted successfully"}
+
+@frappe.whitelist(allow_guest=False)
+def verify_lead(lead_id):
+	"""
+	3a. Verify Lead API
+	Transitions the lead to Qualified.
+	"""
+	frappe.has_permission("A2C Lead", "write", throw=True)
+	if not lead_id:
+		frappe.throw(_("lead_id is required"), frappe.MandatoryError)
+		
+	lead = frappe.get_doc("A2C Lead", lead_id)
+	lead.status = "Qualified"
+	lead.save()
+	
+	return {"status": "success", "message": "Lead verified successfully"}
+
+@frappe.whitelist(allow_guest=False)
+def reject_lead(lead_id, reason=None):
+	"""
+	3b. Reject Lead API
+	Transitions the lead to Rejected or Not Interested.
+	"""
+	frappe.has_permission("A2C Lead", "write", throw=True)
+	if not lead_id:
+		frappe.throw(_("lead_id is required"), frappe.MandatoryError)
+		
+	lead = frappe.get_doc("A2C Lead", lead_id)
+	lead.status = "Not Interested"
+	if reason:
+		lead.call_notes = (lead.call_notes or "") + f"\nRejection Reason: {reason}"
+	lead.save()
+	
+	return {"status": "success", "message": "Lead rejected successfully"}
+
+
+
+@frappe.whitelist(allow_guest=False)
+def create_lead(phone_number=None, first_name=None, last_name=None, email=None, location=None, lead_source="Agent Entry", status="Open", external_id=None):
+    frappe.has_permission("A2C Lead", "create", throw=True)
+
+    if not phone_number:
+        frappe.throw(frappe._("phone_number is required"), frappe.MandatoryError)
+
+    lead = frappe.new_doc("A2C Lead")
+    lead.phone_number = phone_number
+    lead.first_name = first_name
+    lead.last_name = last_name
+    lead.email = email
+    lead.location = location
+    lead.lead_source = lead_source
+    lead.status = status or "Open"
+    if external_id:
+        lead.external_id = external_id
+        
+    lead.insert(ignore_permissions=False)
+    frappe.db.commit()
+
+    return {
+        "status": "success",
+        "data": {
+            "name": lead.name
+        },
+        "lead_id": lead.name,
+        "message": frappe._("Lead created successfully.")
+    }

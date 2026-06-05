@@ -12,8 +12,8 @@ class OpenG2PConsentClient:
         self.db = frappe.conf.get("openg2p_db", "openg2p")
 
         # Portal user — for consent creation
-        self.username = frappe.conf.get("openg2p_username", "admin")
-        self.password = frappe.conf.get("openg2p_password", "admin")
+        self.username = frappe.conf.get("openg2p_username", "megha")
+        self.password = frappe.conf.get("openg2p_password", "megha")
 
         # Admin user — for res.partner / g2p.reg.id lookups
         self.admin_username = frappe.conf.get("openg2p_admin_username", "admin")

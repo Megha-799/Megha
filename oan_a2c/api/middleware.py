@@ -13,7 +13,7 @@ def validate_jwt_request(request=None):
     
     # We only care about our own API boundary. 
     # Let Frappe handle desk access and standard APIs normally.
-    if not path.startswith("/api/method/oan_a2c."):
+    if not path.startswith("/api/method/oan_a2c.") and path != "/api/method/upload_file":
         return
         
     # Whitelisted endpoints that don't require JWT validation
@@ -21,8 +21,7 @@ def validate_jwt_request(request=None):
         "/api/method/oan_a2c.api.auth.login",
         "/api/method/oan_a2c.api.auth.forgot_password",
         "/api/method/oan_a2c.api.auth.reset_password",
-        "/api/method/oan_a2c.api.webhook_api.receive_consent_data",
-        "/api/method/oan_a2c.api.v1.webhooks.lead_inbound"
+        "/api/method/oan_a2c.api.webhook_api.receive_consent_data"
     ]:
         return
 

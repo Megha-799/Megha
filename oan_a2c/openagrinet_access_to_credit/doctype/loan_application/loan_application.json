@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:APP-{YYYY}-{#####}",
+ "autoname": "format:AGL-{#####}",
  "creation": "2026-05-18 17:01:03.620331",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -101,7 +101,9 @@
   "soil_fertility_minerals",
   "moisture_levels",
   "cancellation_reason",
-  "transfer_method"
+  "transfer_method",
+  "consent_data",
+  "lead_id"
  ],
  "fields": [
   {
@@ -610,15 +612,22 @@
   {
    "fieldname": "consent_data",
    "fieldtype": "Code",
-   "options": "JSON",
    "label": "Consent Data",
+   "options": "JSON",
    "read_only": 1
+  },
+  {
+   "fieldname": "lead_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lead ID",
+   "options": "A2C Lead"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-25 15:00:00.000000",
+ "modified": "2026-06-05 15:11:30.238830",
  "modified_by": "Administrator",
  "module": "OpenAgriNet Access to Credit",
  "name": "Loan Application",

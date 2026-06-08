@@ -145,7 +145,11 @@ class OpenG2PConsentClient:
                     error_msg = str(error_data)
                 frappe.throw(_("OpenG2P Error: {0}").format(error_msg))
 
-            return data.get("result")
+            result = data.get("result")
+            if isinstance(result, dict) and result.get("success") is False:
+                frappe.throw(_("OpenG2P Error: {0}").format(result.get("message") or "Unknown error"))
+
+            return result
 
         except requests.exceptions.RequestException as e:
             frappe.throw(_("Failed to connect to OpenG2P: {0}").format(str(e)))
@@ -533,32 +537,18 @@ class OpenG2PConsentClient:
     # -------------------------------------------------------------------------
 
     def upload_attachment(self, filename, file_content_base64, mimetype="application/pdf"):
-        url = f"{self.base_url}/web/dataset/call_kw"
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "call",
-            "params": {
-                "model": "ir.attachment",
-                "method": "create",
-                "args": [{
-                    "name": filename,
-                    "datas": file_content_base64,
-                    "mimetype": mimetype,
-                    "res_model": "g2p.consent.request"
-                }],
-                "kwargs": {}
-            }
+        params = {
+            "attachment_filename": filename,
+            "attachment_base64": file_content_base64,
         }
-        try:
-            response = self.admin_session.post(url, json=payload)
-            data = response.json()
-            if "error" in data:
-                frappe.throw(_("Failed to upload attachment: {0}").format(
-                    data["error"].get("data", {}).get("message", str(data["error"]))
-                ))
-            return data.get("result")
-        except requests.exceptions.RequestException as e:
-            frappe.throw(_("Failed to upload attachment to OpenG2P: {0}").format(str(e)))
+        print(f">>>>>> Uploading attachment to OpenG2P: {filename}")
+        result = self._call_rpc("/api/consent/attachment/upload", "call", params)
+        print(f">>>>>> OpenG2P upload response: {result}")
+        data = result.get("data", {}) if isinstance(result, dict) else {}
+        attachment_id = data.get("attachment_id")
+        if not attachment_id:
+            frappe.throw(_("No attachment_id returned from OpenG2P."))
+        return attachment_id
 
     def upload_consent_attachment(self, file_url):
         """Read file from Frappe disk and upload to OpenG2P."""

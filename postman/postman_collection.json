@@ -162,41 +162,6 @@
                     "response": []
                 },
                 {
-                    "name": "2. Create Lead Natively",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{jwt_token}}",
-                                "type": "text"
-                            },
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json",
-                                "type": "text"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"phone_number\": \"+251911000003\",\n    \"first_name\": \"Abebe\",\n    \"last_name\": \"Bikila\",\n    \"email\": \"abebe@coopbank.com\",\n    \"lead_source\": \"Agent Entry\",\n    \"external_id\": \"PARTNER-990011\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{base_url}}/api/method/oan_a2c.api.v1.leads.create_lead",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "api",
-                                "method",
-                                "oan_a2c.api.v1.leads.create_lead"
-                            ]
-                        },
-                        "description": "Natively registers a new A2C Lead document in the system using JWT field agent context."
-                    },
-                    "response": []
-                },
-                {
                     "name": "3. Get Lead Summary (Metrics Dashboard)",
                     "request": {
                         "method": "GET",
@@ -289,8 +254,14 @@
                         },
                         "url": {
                             "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.get_consent_data",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "method", "oan_a2c.api.loan_app_api.get_consent_data"]
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "method",
+                                "oan_a2c.api.loan_app_api.get_consent_data"
+                            ]
                         }
                     }
                 }
@@ -304,15 +275,30 @@
                     "description": "Creates or updates Step 1. On create, omit application_id. Returns all saved field values plus application_id.",
                     "request": {
                         "method": "POST",
-                        "header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{jwt_token}}"}],
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"action\": \"save\",\n    \"loan_type\": \"Input Financing\",\n    \"purpose_of_loan\": \"Agro-processing (e.g., milling grain)\",\n    \"requested_loan_amount\": 75000,\n    \"loan_duration_months\": 12,\n    \"nearest_branch\": \"Addis Ababa Branch\",\n    \"primary_crop\": \"Wheat\",\n    \"crop_variety\": \"Seed + S-Hela/Achen - Stellar Star\",\n    \"address\": \"Bishoftu\",\n    \"quantity_requested_kg\": 500,\n    \"unit_price\": 150,\n    \"total_seed_cost\": 75000,\n    \"land_size_hectares\": 10,\n    \"expected_yield\": 30,\n    \"expected_harvest_date\": \"2026-12-01\",\n    \"fertilizer_used\": \"DAP\",\n    \"other_farming_activities\": \"Cattle\",\n    \"farmer_group\": \"Group A\",\n    \"animal_reared\": \"20\",\n    \"farm_equipment\": \"Tractor\",\n    \"farm_size_hectares\": 12,\n    \"region\": \"Oromia\",\n    \"zone\": \"East Shewa\",\n    \"woreda\": \"Bishoftu\",\n    \"kebele\": \"Kebele 01\",\n    \"harvest_aggregator_type\": \"Primary Cooperative\",\n    \"name_of_cooperative\": \"ABC Coop\",\n    \"dap_quantity_kg\": 200,\n    \"urea_quantity_kg\": 100,\n    \"unit_price_per_fertilizer_type\": 50,\n    \"total_fertilizer_cost\": 15000,\n    \"type_of_agrochemical\": \"Herbicide\",\n    \"agrochemical_quantity_requested\": 10,\n    \"agrochemical_unit_price\": 200,\n    \"total_crop_protection_cost\": 2000,\n    \"selected_input_supplier\": \"AgroSupply Ltd\",\n    \"upfront_contribution_male_percent\": 20,\n    \"upfront_contribution_female_percent\": 20,\n    \"crop_insurance_premium_percent\": 5\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.loan_details",
-                            "host": ["{{base_url}}"],
-                            "path": ["api","method","oan_a2c.api.loan_app_api.loan_details"]
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "method",
+                                "oan_a2c.api.loan_app_api.loan_details"
+                            ]
                         }
                     },
                     "response": []
@@ -322,15 +308,30 @@
                     "description": "Fetches existing Step 1 data to pre-populate the form when user navigates back.",
                     "request": {
                         "method": "POST",
-                        "header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{jwt_token}}"}],
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"action\": \"get\",\n    \"application_id\": \"{{application_id}}\"\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.loan_details",
-                            "host": ["{{base_url}}"],
-                            "path": ["api","method","oan_a2c.api.loan_app_api.loan_details"]
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "method",
+                                "oan_a2c.api.loan_app_api.loan_details"
+                            ]
                         }
                     },
                     "response": []
@@ -340,15 +341,30 @@
                     "description": "Saves banking info. Tax ID required if total_amount_borrowing > ETB 100,000. Returns all saved bank fields.",
                     "request": {
                         "method": "POST",
-                        "header": [{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{jwt_token}}"}],
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"action\": \"save\",\n    \"application_id\": \"{{application_id}}\",\n    \"bank_account_name\": \"Abebe Kebede\",\n    \"bank_account_number\": \"1000300143941\",\n    \"bank_name\": \"Cooperative Bank of Oromia\",\n    \"bank_swift_ifsc_code\": \"CBOIETH\",\n    \"mobile_account_name\": \"Abebe Kebede\",\n    \"mobile_payments_number\": \"0911223344\",\n    \"total_amount_borrowing\": 75000,\n    \"tax_id\": null\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.bank_details",
-                            "host": ["{{base_url}}"],
-                            "path": ["api","method","oan_a2c.api.loan_app_api.bank_details"]
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "method",
+                                "oan_a2c.api.loan_app_api.bank_details"
+                            ]
                         }
                     },
                     "response": []
@@ -358,15 +374,30 @@
                     "description": "Returns current bank fields for pre-populating Step 2 form.",
                     "request": {
                         "method": "POST",
-                        "header": [{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{jwt_token}}"}],
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"action\": \"get\",\n    \"application_id\": \"{{application_id}}\"\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.bank_details",
-                            "host": ["{{base_url}}"],
-                            "path": ["api","method","oan_a2c.api.loan_app_api.bank_details"]
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "method",
+                                "oan_a2c.api.loan_app_api.bank_details"
+                            ]
                         }
                     },
                     "response": []
@@ -457,15 +488,30 @@
                     "description": "Saves all farmer fields. Returns all saved values. marital_status options: Single|Married|Widowed|Divorced|Separated.",
                     "request": {
                         "method": "POST",
-                        "header": [{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{jwt_token}}"}],
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"action\": \"save\",\n    \"application_id\": \"{{application_id}}\",\n    \"full_name\": \"Amit\",\n    \"last_name\": \"Sharma\",\n    \"mobile_phone\": \"+251986543210\",\n    \"date_of_birth\": \"1998-05-15\",\n    \"gender\": \"Male\",\n    \"woreda\": \"Bishoftu\",\n    \"kebele\": \"Bishoftu\",\n    \"id_type\": \"National ID\",\n    \"id_number\": \"29838928923\",\n    \"language\": \"English\",\n    \"land_size_acres\": 12,\n    \"farm_id\": \"29838928923\",\n    \"farm_polygon\": \"Farm Polygon\",\n    \"land_acreage\": 12,\n    \"farm_land_number\": \"29838928923\",\n    \"marital_status\": \"Married\",\n    \"size_of_family\": 4,\n    \"number_of_children\": 3,\n    \"no_of_females_family\": 3,\n    \"no_of_males_family\": 3,\n    \"family_member_owns_land\": 1,\n    \"source_of_income\": \"Salary\",\n    \"education_level\": \"Degree and above\",\n    \"total_farmland_as_landowner\": 3,\n    \"total_farmland_as_crop_sharing\": 4,\n    \"total_farmland_as_rented\": 3,\n    \"certification_id\": \"29838928923\",\n    \"farmland_size_hectares\": 10,\n    \"land_ownership_status\": \"Security of access\",\n    \"soil_fertility_minerals\": \"Future yield potential\",\n    \"moisture_levels\": \"Irrigation / drought risks\"\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.farmer_details",
-                            "host": ["{{base_url}}"],
-                            "path": ["api","method","oan_a2c.api.loan_app_api.farmer_details"]
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "method",
+                                "oan_a2c.api.loan_app_api.farmer_details"
+                            ]
                         }
                     },
                     "response": []
@@ -475,15 +521,30 @@
                     "description": "Returns current farmer fields for pre-populating Step 5 form.",
                     "request": {
                         "method": "POST",
-                        "header": [{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{jwt_token}}"}],
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"action\": \"get\",\n    \"application_id\": \"{{application_id}}\"\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.farmer_details",
-                            "host": ["{{base_url}}"],
-                            "path": ["api","method","oan_a2c.api.loan_app_api.farmer_details"]
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "method",
+                                "oan_a2c.api.loan_app_api.farmer_details"
+                            ]
                         }
                     },
                     "response": []
@@ -569,6 +630,38 @@
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"action\": \"submit\",\n    \"application_id\": \"{{application_id}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.application_manager",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "method",
+                                "oan_a2c.api.loan_app_api.application_manager"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "8b. Application Manager - Update Status",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"action\": \"update_status\",\n    \"application_id\": \"{{application_id}}\",\n    \"status\": \"Approved\",\n    \"remarks\": \"Looks good!\"\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.application_manager",

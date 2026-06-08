@@ -134,80 +134,50 @@ def request_otp(**kwargs):
     consent_form_filename   = _getter("consent_form_filename")
     consent_form_base64     = _getter("consent_form_base64")
 
-    attachment_ids = None
-    if consent_form_filename and consent_form_base64:
-        try:
-            import mimetypes
-            # Strip data URI prefix if present (e.g. data:image/png;base64,...)
-            b64_data = consent_form_base64
-            if "," in b64_data:
-                b64_data = b64_data.split(",", 1)[1]
-                
-            mimetype = mimetypes.guess_type(consent_form_filename)[0] or "application/octet-stream"
-            odoo_att_id = client.upload_attachment(consent_form_filename, b64_data, mimetype)
-            if odoo_att_id:
-                attachment_ids = [odoo_att_id]
-        except Exception as e:
-            frappe.throw(frappe._("Base64 attachment upload failed: {0}").format(str(e)))
-    elif consent_form_attachment and consent_form_attachment not in ("None", "none", ""):
-        try:
-            odoo_att_id = client.upload_consent_attachment(consent_form_attachment)
-            if odoo_att_id:
-                attachment_ids = [odoo_att_id]
-        except Exception as e:
-            frappe.throw(frappe._("Attachment upload failed: {0}").format(str(e)))
-    else:
-        frappe.throw(frappe._("An attachment is strictly required. Please provide consent_form_base64 and consent_form_filename."))
-
     if not validity_from or not validity_to:
         validity_from = now_datetime().strftime("%Y-%m-%d %H:%M:%S")
         validity_to   = add_to_date(now_datetime(), years=1).strftime("%Y-%m-%d %H:%M:%S")
 
-    # 1. Create Consent in OpenG2P
-    try:
-        consent_response = client.create_consent_request(
-            partner_id=partner_id_openg2p,
-            farmer_db_id=farmer_db_id,
-            consent_type="specific",
-            purpose=purpose,
-            validity_from=validity_from,
-            validity_to=validity_to,
-            allowed_data_field_ids=allowed_data_field_ids,
-            attachment_ids=attachment_ids
+    # 1. Save attachment locally in Frappe if base64 provided
+    if consent_form_filename and consent_form_base64:
+        import base64
+        from frappe.utils.file_manager import save_file
+        
+        b64_data = consent_form_base64
+        if "," in b64_data:
+            b64_data = b64_data.split(",", 1)[1]
+            
+        file_content = base64.b64decode(b64_data)
+        saved_file = save_file(
+            fname=consent_form_filename,
+            content=file_content,
+            dt="A2C Lead",
+            dn=lead_id if lead_id else None,
+            is_private=1
         )
-    except Exception as e:
-        frappe.throw(frappe._("Failed to create consent in OpenG2P: {0}").format(str(e)))
+        consent_form_attachment = saved_file.file_url
+    elif not consent_form_attachment:
+        frappe.throw(frappe._("An attachment is strictly required. Please provide consent_form_base64 and consent_form_filename."))
 
-    consent_data_resp = consent_response.get("data") or {}
-    openg2p_consent_id = (
-        consent_data_resp.get("consent_creation_request_id")
-        or consent_data_resp.get("id")
-        or consent_response.get("consent_creation_request_id")
-        or consent_response.get("id")
-        or "G2P-CONS-XXXXX"
-    )
-
-    # 2. Send OTP
+    # 2. Trigger Odoo OTP (which hits Fayda)
     try:
-        otp_response = client.send_otp(farmer_id=farmer_db_id)
+        otp_response = client.request_otp(farmer_id=farmer_db_id)
+        odoo_session_id = client.session.cookies.get("session_id")
     except Exception as e:
-        frappe.throw(frappe._("Consent created but OTP request failed: {0}").format(str(e)))
+        frappe.throw(frappe._("OTP request failed: {0}").format(str(e)))
 
-    if isinstance(otp_response, dict) and otp_response.get("success") is False:
-        frappe.throw(frappe._("OTP Error: {0}").format(otp_response.get("message", "Unknown error")))
-
-    transaction_id = None
-    if isinstance(otp_response, dict):
-        transaction_id = otp_response.get("transaction_id") or otp_response.get("id")
+    otp_data = otp_response.get("data") or {}
+    transaction_id = otp_data.get("transaction_id")
+    masked_phone = otp_data.get("masked_mobile") or "XXXX"
 
     if not transaction_id:
         frappe.throw(frappe._("OTP sent but no transaction_id returned: {0}").format(str(otp_response)))
 
-    masked_phone = ""
-    if isinstance(otp_response, dict):
-        masked_phone = otp_response.get("masked_mobile") or otp_response.get("masked_phone", "")
+    print(f">>>>>> [DEBUG] Storing Odoo session_id: {odoo_session_id} for transaction_id: {transaction_id}")
+    if odoo_session_id:
+        frappe.cache().set_value(f"odoo_session_{transaction_id}", odoo_session_id, expires_in_sec=1800)
 
-    # 3. Create Frappe Consent Request
+    # 3. Create Frappe Consent Request (Pending Odoo Creation)
     try:
         doc = frappe.new_doc("Consent Request")
         doc.farmer_fayda_id         = fayda_id
@@ -217,7 +187,6 @@ def request_otp(**kwargs):
         doc.validity_from           = validity_from
         doc.validity_to             = validity_to
         doc.consent_form_attachment = consent_form_attachment
-        doc.openg2p_consent_id      = openg2p_consent_id
         doc.otp_transaction_id      = transaction_id
         doc.status                  = "Pending OTP"
             
@@ -239,10 +208,9 @@ def request_otp(**kwargs):
     return {
         "status": "success",
         "consent_request": consent_request_name,
-        "openg2p_consent_id": openg2p_consent_id,
         "transaction_id": transaction_id,
         "masked_phone": masked_phone,
-        "message": "Consent created and OTP sent successfully. Proceed to verify OTP.",
+        "message": "OTP sent successfully. Proceed to verify OTP.",
     }
 
 
@@ -268,22 +236,30 @@ def verify_otp_for_lead(**kwargs):
         frappe.throw(frappe._("No consent_request found on Lead '{0}'. Did you call request_otp first?").format(lead_id))
 
     cr_doc = frappe.get_doc("Consent Request", consent_request)
-    fayda_id           = cr_doc.farmer_fayda_id
-    transaction_id     = cr_doc.otp_transaction_id
-    openg2p_consent_id = cr_doc.openg2p_consent_id
+    fayda_id                = cr_doc.farmer_fayda_id
+    transaction_id          = cr_doc.otp_transaction_id
+    partner                 = cr_doc.partner
+    purpose                 = cr_doc.purpose
+    consent_form_attachment = cr_doc.consent_form_attachment
+    
+    validity_from = cr_doc.validity_from.strftime("%Y-%m-%d %H:%M:%S") if cr_doc.validity_from else None
+    validity_to   = cr_doc.validity_to.strftime("%Y-%m-%d %H:%M:%S") if cr_doc.validity_to else None
 
     if not transaction_id:
         frappe.throw(frappe._("OTP was not requested for this consent"))
-    if not openg2p_consent_id:
-        frappe.throw(frappe._("Consent was not created in OpenG2P for this request"))
 
-    client = OpenG2PConsentClient()
+    # Restore Odoo session cookie to match request_otp context
+    odoo_session_id = frappe.cache().get_value(f"odoo_session_{transaction_id}")
+    print(f">>>>>> [DEBUG] Retrieved Odoo session_id: {odoo_session_id} for transaction_id: {transaction_id}")
+    
+    # Initialize client WITH the old session ID, skipping re-authentication!
+    client = OpenG2PConsentClient(portal_session_id=odoo_session_id)
 
     farmer_db_id = client.get_farmer_by_fayda_id(fayda_id)
     if not farmer_db_id:
         frappe.throw(frappe._("Farmer with Fayda ID '{0}' not found in OpenG2P.").format(fayda_id))
 
-    # 1. Verify OTP
+    # 1. Verify OTP with Odoo (Fayda)
     try:
         client.verify_otp(
             farmer_id=farmer_db_id,
@@ -293,16 +269,50 @@ def verify_otp_for_lead(**kwargs):
     except Exception as e:
         frappe.throw(frappe._("OTP verification failed: {0}").format(str(e)))
 
-    # 2. Approve Consent in OpenG2P
+    # 2. Upload Attachment
+    try:
+        attachment_id = client.upload_consent_attachment(consent_form_attachment)
+    except Exception as e:
+        frappe.throw(frappe._("Attachment upload failed: {0}").format(str(e)))
+
+    # 3. Create Consent Request in Odoo
+    partner_id_openg2p = client.get_partner_id(partner)
+    if not partner_id_openg2p:
+        frappe.throw(frappe._("Partner '{0}' not found in OpenG2P.").format(partner))
+        
+    allowed_data_field_ids = client.get_partner_allowed_data_field_ids(partner_id_openg2p) or []
+    
+    try:
+        consent_response = client.create_consent_request(
+            partner_id=partner_id_openg2p,
+            farmer_db_id=farmer_db_id,
+            consent_type="specific",
+            purpose=purpose,
+            validity_from=validity_from,
+            validity_to=validity_to,
+            allowed_data_field_ids=allowed_data_field_ids,
+            attachment_ids=attachment_id
+        )
+    except Exception as e:
+        frappe.throw(frappe._("Consent creation failed: {0}").format(str(e)))
+
+    consent_data_resp = consent_response.get("data") or {}
+    openg2p_consent_id = consent_data_resp.get("consent_creation_request_id") or consent_data_resp.get("id")
+
+    if not openg2p_consent_id:
+        frappe.throw(frappe._("Consent created but no ID returned: {0}").format(str(consent_response)))
+
+    # 4. Approve Consent in OpenG2P
     try:
         client.approve_consent_request(openg2p_consent_id)
     except Exception as e:
         print(f">>>>>> Warning: consent approval failed: {e}")
 
-    # 3. Generate Receipt and Update Lead
+    # 5. Generate Receipt and Update Lead
     frappe.db.set_value("Consent Request", consent_request, {
-        "status":          "Approved",
-        "otp_verified_at": now_datetime(),
+        "status":             "Approved",
+        "otp_verified_at":    now_datetime(),
+        "openg2p_consent_id": openg2p_consent_id,
     })
     frappe.db.commit()
 

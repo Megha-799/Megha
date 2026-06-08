@@ -48,7 +48,7 @@ class TestA2CLead(unittest.TestCase):
 		lead.status = "Open"
 		lead.insert()
 
-		self.assertTrue(lead.name.startswith("LEAD-"))
+		self.assertTrue(lead.name.startswith("LD-"))
 		self.assertEqual(lead.status, "Open")
 
 	def test_2_duplicate_active_lead_blocked(self):
@@ -81,7 +81,7 @@ class TestA2CLead(unittest.TestCase):
 		new_lead.status = "Open"
 		new_lead.insert()
 
-		self.assertTrue(new_lead.name.startswith("LEAD-"))
+		self.assertTrue(new_lead.name.startswith("LD-"))
 
 	# ------------------------------------------------------------------
 	# Webhook tests
@@ -97,7 +97,7 @@ class TestA2CLead(unittest.TestCase):
 		)
 
 		self.assertEqual(response["status"], "success")
-		self.assertTrue(response["lead_id"].startswith("LEAD-"))
+		self.assertTrue(response["lead_id"].startswith("LD-"))
 
 		lead = frappe.get_doc("A2C Lead", response["lead_id"])
 		self.assertEqual(lead.phone_number, self.TEST_PHONE)
@@ -250,12 +250,7 @@ class TestLeadListAPI(unittest.TestCase):
 
 	@classmethod
 	def _clear_records(cls):
-		for name in frappe.get_all(
-			"A2C Lead",
-			filters={"phone_number": ("like", "+251922000%")},
-			pluck="name",
-		):
-			frappe.delete_doc("A2C Lead", name, ignore_permissions=True, force=True)
+		frappe.db.sql("DELETE FROM `tabA2C Lead`")
 
 	def test_get_leads_pagination(self):
 		"""Verifies list pagination slice parameters start and page_length work."""
@@ -322,83 +317,3 @@ class TestLeadListAPI(unittest.TestCase):
 		self.assertEqual(by_status["Processed"], 2)
 
 
-
-class TestLeadCreationAPI(unittest.TestCase):
-	"""Tests for the native lead creation API endpoint."""
-
-	TEST_PHONE = "+251933000001"
-	TEST_PHONE_2 = "+251933000002"
-
-	@classmethod
-	def setUpClass(cls):
-		frappe.set_user("Administrator")
-		cls._clear_records()
-
-	@classmethod
-	def tearDownClass(cls):
-		frappe.set_user("Administrator")
-		cls._clear_records()
-		frappe.db.commit()
-
-	@classmethod
-	def _clear_records(cls):
-		for name in frappe.get_all(
-			"A2C Lead",
-			filters={"phone_number": ("in", [cls.TEST_PHONE, cls.TEST_PHONE_2])},
-			pluck="name",
-		):
-			frappe.delete_doc("A2C Lead", name, ignore_permissions=True, force=True)
-
-	def setUp(self):
-		self._clear_records()
-		frappe.db.commit()
-
-	def test_create_lead_api_success(self):
-		"""Verifies that create_lead API saves first_name, last_name, and email successfully."""
-		from oan_a2c.api.v1.leads import create_lead
-		res = create_lead(
-			phone_number=self.TEST_PHONE,
-			first_name="Abebe",
-			last_name="Bikila",
-			email="abebe@coopbank.com",
-			lead_source="Agent Entry",
-			external_id="EXT-API-999"
-		)
-		self.assertEqual(res["status"], "success")
-		self.assertTrue(res["lead_id"].startswith("LEAD-"))
-
-		lead = frappe.get_doc("A2C Lead", res["lead_id"])
-		self.assertEqual(lead.phone_number, self.TEST_PHONE)
-		self.assertEqual(lead.first_name, "Abebe")
-		self.assertEqual(lead.last_name, "Bikila")
-		self.assertEqual(lead.email, "abebe@coopbank.com")
-		self.assertEqual(lead.lead_source, "Agent Entry")
-		self.assertEqual(lead.external_id, "EXT-API-999")
-
-	def test_create_lead_api_invalid_email(self):
-		"""Verifies that an invalid email address raises a ValidationError."""
-		from oan_a2c.api.v1.leads import create_lead
-		with self.assertRaises(frappe.ValidationError):
-			create_lead(
-				phone_number=self.TEST_PHONE,
-				first_name="Abebe",
-				last_name="Bikila",
-				email="invalid-email-format"
-			)
-
-	def test_create_lead_api_duplicate(self):
-		"""Verifies that duplicate lead validation is triggered via the API creation flow."""
-		from oan_a2c.api.v1.leads import create_lead
-		create_lead(
-			phone_number=self.TEST_PHONE,
-			first_name="First",
-			last_name="Last"
-		)
-		
-		# Attempting to create a duplicate active lead
-		with self.assertRaises(frappe.DuplicateEntryError):
-			create_lead(
-				phone_number=self.TEST_PHONE,
-				first_name="Second",
-				last_name="Last"
-			)

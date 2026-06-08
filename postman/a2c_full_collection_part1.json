@@ -1,6 +1,6 @@
 {
     "info": {
-        "name": "OAN A2C \u2014 Full Collection Part 1",
+        "name": "OAN A2C \u2014 Full Collection Final Part 1",
         "description": "Logically ordered workflow for Access to Credit: Dashboards -> Lead Creation -> Consent -> Loan App Processing.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
@@ -189,50 +189,6 @@
             "name": "2. Lead Generation",
             "item": [
                 {
-                    "name": "2.1 Create Lead (Manual Entry)",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "exec": [
-                                    "var resp = pm.response.json();",
-                                    "var lead_id = (resp.message && resp.message.lead_id) || (resp.data && resp.data.name) || (resp.message && resp.message.data && resp.message.data.name);",
-                                    "if (lead_id) { pm.collectionVariables.set('lead_id', lead_id); }"
-                                ],
-                                "type": "text/javascript"
-                            }
-                        }
-                    ],
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{jwt_token}}"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"phone_number\": \"0912345678\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john@example.com\",\n  \"location\": \"Addis Ababa\",\n  \"lead_source\": \"Agent Entry\",\n  \"status\": \"Open\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{base_url}}/api/method/oan_a2c.api.v1.leads.create_lead",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "api",
-                                "method",
-                                "oan_a2c.api.v1.leads.create_lead"
-                            ]
-                        }
-                    }
-                },
-                {
                     "name": "2.2 Create Lead (Missed Call/IVR Webhook)",
                     "event": [
                         {
@@ -312,7 +268,7 @@
                     }
                 },
                 {
-                    "name": "4.2 Request OTP and Create Consent",
+                    "name": "4.2 Request OTP",
                     "event": [
                         {
                             "listen": "test",
@@ -601,7 +557,7 @@
             "name": "6. Loan Application Processing",
             "item": [
                 {
-                    "name": "6.2 Upload Document API",
+                    "name": "6.2 Supporting Documents - Upload",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -614,39 +570,70 @@
                             "mode": "formdata",
                             "formdata": [
                                 {
-                                    "key": "file",
-                                    "type": "file",
-                                    "src": []
-                                },
-                                {
-                                    "key": "doctype",
-                                    "value": "Loan Application",
+                                    "key": "action",
+                                    "value": "upload",
                                     "type": "text"
                                 },
                                 {
-                                    "key": "docname",
+                                    "key": "application_id",
                                     "value": "{{application_id}}",
                                     "type": "text"
                                 },
                                 {
-                                    "key": "is_private",
-                                    "value": "1",
+                                    "key": "document_type",
+                                    "value": "Identity Document",
                                     "type": "text"
+                                },
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
                                 }
                             ]
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/method/upload_file",
+                            "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.supporting_documents",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
                                 "method",
-                                "upload_file"
+                                "oan_a2c.api.loan_app_api.supporting_documents"
                             ]
                         },
-                        "description": "Native Frappe API to attach files to the loan application."
+                        "description": "Uploads a file directly attached to a specific document type placeholder for the Loan Application."
+                    }
+                },
+                {
+                    "name": "6.2b Supporting Documents - List",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"action\": \"list\",\n    \"application_id\": \"{{application_id}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/method/oan_a2c.api.loan_app_api.supporting_documents",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "method",
+                                "oan_a2c.api.loan_app_api.supporting_documents"
+                            ]
+                        }
                     }
                 },
                 {

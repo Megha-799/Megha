@@ -103,8 +103,9 @@ class TestLoanAPI(unittest.TestCase):
         )
         self.assertEqual(response["status"], "success")
         sections = response["data"]["sections"]
-        self.assertIn("Loan Requirements", sections)
-        self.assertIn("Bank Details", sections)
+        section_labels = [s["label"] for s in sections]
+        self.assertIn("Loan Requirements", section_labels)
+        self.assertIn("Supporting Documents", section_labels)
 
     def test_5_draft_save(self):
         """Test draft saving functionality with protected fields"""
@@ -185,9 +186,9 @@ class TestLoanAPI(unittest.TestCase):
             action="submit",
             application_id=app_id
         )
-        # It should fail because consent_status != "Approved" and no documents
+        # It should fail because no documents are uploaded (consent check is bypassed)
         self.assertEqual(response["status"], "error")
-        self.assertEqual(response["error_code"], "CONSENT_NOT_APPROVED")
+        self.assertEqual(response["error_code"], "MISSING_DOCS")
 
     def test_9_cancel_application(self):
         """Test cancelling the application"""

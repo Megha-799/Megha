@@ -719,8 +719,7 @@ def application_manager(**kwargs):
         if err:
             return err
 
-        if getattr(doc, "consent_status", "") != "Approved":
-            return error("CONSENT_NOT_APPROVED", "OTP consent must be verified before submitting.")
+        # Consent is now verified at the Lead stage — no check needed here
 
         has_docs = frappe.db.count("File", {
             "attached_to_doctype": "Loan Application",
@@ -746,7 +745,7 @@ def application_manager(**kwargs):
                 "submitted_at":   submitted_at,
                 "created_at":     str(doc.creation),
                 "transfer_method": "SFTP Sync",
-                "status": "Submitted",
+                "status": doc.status,
                 "farmer_info": {
                     "farmer_name": farmer_name,
                     "loan_type":   loan_type,

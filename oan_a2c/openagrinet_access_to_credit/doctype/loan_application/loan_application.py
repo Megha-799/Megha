@@ -157,7 +157,7 @@ def get_loan_summary():
             SELECT 
                 COUNT(name) as total_applications,
                 SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved,
-                SUM(CASE WHEN status = 'Under Review' THEN 1 ELSE 0 END) as pending_review,
+                SUM(CASE WHEN status IN ('Under Review', 'Submitted') THEN 1 ELSE 0 END) as pending_review,
                 SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected,
                 SUM(CASE WHEN status = 'Draft' THEN 1 ELSE 0 END) as draft
             FROM `tabLoan Application`

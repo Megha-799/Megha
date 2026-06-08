@@ -360,6 +360,14 @@ def supporting_documents(**kwargs):
 		if not uploaded_file:
 			return error("NO_FILE", "No file was uploaded.")
 
+		# Explicitly check for 10MB limit to match Odoo and return clean JSON error
+		uploaded_file.seek(0, 2)
+		file_size = uploaded_file.tell()
+		uploaded_file.seek(0)
+		
+		if file_size > 10 * 1024 * 1024:
+			return error("FILE_TOO_LARGE", "File size exceeds the 10MB limit.")
+
 		try:
 			file_doc = frappe.get_doc(
 				{

@@ -311,32 +311,4 @@ def reject_lead(lead_id, reason=None):
 
 
 
-@frappe.whitelist(allow_guest=False)
-def create_lead(phone_number=None, first_name=None, last_name=None, email=None, location=None, lead_source="Agent Entry", status="Open", external_id=None):
-    frappe.has_permission("A2C Lead", "create", throw=True)
 
-    if not phone_number:
-        frappe.throw(frappe._("phone_number is required"), frappe.MandatoryError)
-
-    lead = frappe.new_doc("A2C Lead")
-    lead.phone_number = phone_number
-    lead.first_name = first_name
-    lead.last_name = last_name
-    lead.email = email
-    lead.location = location
-    lead.lead_source = lead_source
-    lead.status = status or "Open"
-    if external_id:
-        lead.external_id = external_id
-        
-    lead.insert(ignore_permissions=False)
-    frappe.db.commit()
-
-    return {
-        "status": "success",
-        "data": {
-            "name": lead.name
-        },
-        "lead_id": lead.name,
-        "message": frappe._("Lead created successfully.")
-    }
